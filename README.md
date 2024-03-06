@@ -1,0 +1,77 @@
+datePreprocess.py
+# 数据预处理（清洗(文本统一小写，语法缩写还原)&合并数据集）
+
+repalceList.py
+# 语法缩写还原规则列表
+
+textEmoDetect.py
+# 模型测试
+
+training.py
+# 模型训练
+
+trained_model
+# 训练好的模型
+
+test.csv
+# 测试集
+
+train.csv
+# 训练集
+
+validation.csv
+# 验证集
+
+bert_model
+# 预训练的BERT模型
+bert_tokenizer
+# 预训练的BERT模型对应的分词器
+
+SVM.py
+# SVM模型
+
+Bayes.py
+# 贝叶斯模型
+
+保存图片
+# 实验结果图片
+```
+
+## 模型微调位于training.py 64-76行
+
+bert_model = TFBertModel.from_pretrained('bert-base-uncased')
+# 加载预训练模型bert-base-uncased（由于数据集在清洗之后文本统一为小写，所以使用uncased模型）
+
+input_ids = Input(shape=(max_length,), name='input_ids', dtype=tf.int32)：
+# 这是一个输入层，用于接收输入的文本序列。shape=(max_length,)表示输入的文本序列的最大长度为max_length，dtype=tf.int32表示输入的数据类型为整数。
+
+input_mask = Input(shape=(max_length,), name='attention_mask', dtype=tf.int32)：
+# 这是另一个输入层，用于接收输入文本序列的注意力掩码。注意力掩码用于指示哪些部分是输入文本的有效部分，哪些部分是填充部分。shape=(max_length,)表示注意力掩码的长度与输入文本序列的长度相同，dtype=tf.int32表示数据类型为整数。
+
+embedding = bert_model(input_ids, attention_mask=input_mask)[0]：
+# 这一层使用BERT模型对输入的文本序列进行嵌入表示。bert_model是一个预训练的BERT模型，它将输入的文本序列和注意力掩码作为输入，并返回嵌入表示。[0]表示我们只使用BERT模型的第一个输出，即嵌入表示。
+
+out = tf.keras.layers.GlobalMaxPool1D()(embedding)：
+# 这是一个全局最大池化层，用于从嵌入表示中提取最重要的特征。它在每个嵌入向量的维度上取最大值，将嵌入表示的维度从二维降低到一维。
+
+out = tf.keras.layers.BatchNormalization()(out)：
+# 这是一个批归一化层，用于对输入进行归一化处理，加速模型的训练过程并提高模型的泛化能力。
+
+out = Dense(128, activation='relu')(out)：
+# 这是一个全连接层，将输入的特征进行线性变换，并通过ReLU激活函数进行非线性变换。它将输入的维度从一维变换为128维。
+
+out = tf.keras.layers.Dropout(0.1)(out)：
+# 这是一个丢弃层，用于在训练过程中随机丢弃一部分神经元的输出，以减少过拟合的风险。这里丢弃率为0.1，即丢弃10%的神经元。
+
+out = Dense(32, activation='relu')(out)：
+# 这是另一个全连接层，将输入的特征进行线性变换，并通过ReLU激活函数进行非线性变换。它将输入的维度从128维变换为32维。
+
+# 微调主要目的：将BERT模型的权重进行微调，以适应特定任务的需求（本任务为文本的6种情绪识别）
+results = Dense(6, activation='sigmoid')(out)：
+# 这是最后一个全连接层，将输入的特征进行线性变换，并通过Sigmoid激活函数进行非线性变换。它将输入的维度从32维变换为6维，用于进行文本分类任务。
+
+model = tf.keras.Model(inputs=[input_ids, input_mask], outputs=[results])：
+# 这是一个模型定义层，将输入层和输出层组合成一个完整的模型。inputs=[input_ids, input_mask]表示模型的输入是input_ids和input_mask，outputs=[results]表示模型的输出是results。
+
+model.layers[2].trainable = True：
+# 这一行代码将模型中的第三层（即BERT模型的嵌入层）设置为可训练的，即在训练过程中更新其权重。默认情况下，预训练的BERT模型的权重是不可训练的，但在这里我们将其设置为可训练，以便在特定任务上进行微调。
