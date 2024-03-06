@@ -37,6 +37,7 @@ Bayes.py
 # 实验结果图片
 ```
 
+##模型结构说明##
 ## 模型微调位于training.py 64-76行
 
 bert_model = TFBertModel.from_pretrained('bert-base-uncased')
